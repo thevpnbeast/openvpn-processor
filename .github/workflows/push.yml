@@ -1,0 +1,156 @@
+---
+
+name: CI
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.17.x
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          # version: latest
+          version: v1.46.1
+
+  vet:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.17.x
+      - name: Vet
+        run: make vet
+
+  ineffassign:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.17.x
+      - name: Lint
+        run: make ineffassign
+
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.17.x
+      - name: Test
+        env:
+          ACTIVE_PROFILE: unit-test
+        run: make test
+
+  codeql:
+    runs-on: ubuntu-latest
+    needs:
+      - lint
+      - vet
+      - ineffassign
+      - test
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'go' ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: ${{ matrix.language }}
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v2
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+
+  sonarcloud:
+    runs-on: ubuntu-latest
+    needs:
+      - lint
+      - vet
+      - ineffassign
+      - test
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.17.x
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Coverage Test
+        run: make test_coverage
+        env:
+          ACTIVE_PROFILE: unit-test
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  build:
+    needs:
+      - lint
+      - vet
+      - ineffassign
+      - test
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.17.x
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Test
+        run: make build
+
+#  release:
+#    needs:
+#      - codeql
+#      - sonarcloud
+#      - build
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v3
+#      - name: Set release_version variable
+#        run: echo "release_version=$(grep RELEASE_VERSION version.properties | cut -d '=' -f2)" >> $GITHUB_ENV
+#      - name: Commit changes to Git repo
+#        run: |
+#          git config --global user.name vpnbeast-ci
+#          git config --global user.email info@thevpnbeast.com
+#          git --no-pager diff
+#          git add --all
+#          git remote add github "https://vpnbeast-ci:${{ secrets.ACTIONS_SECRET }}@github.com/vpnbeast/encryption-service.git"
+#          git commit -am "[skip ci] version v${{ env.release_version }} released"
+#          git tag -a "v${{ env.release_version }}" -m "v${{ env.release_version }} tagged"
+#          git status
+#          git push github HEAD:master --force --follow-tags
