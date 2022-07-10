@@ -62,7 +62,7 @@ upgrade-direct-deps:
 aws_build:
 	go get -v all
 	GOOS=linux go build -o bin/main cmd/openvpn-processor/main.go
-	zip -jrm build/main.zip bin/main
+	zip -jrm bin/main.zip bin/main
 
 aws_upload: aws_build
 	aws lambda update-function-code --function-name openvpn-processor --zip-file fileb://bin/main.zip
