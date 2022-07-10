@@ -1,0 +1,5 @@
+- [ ] Get application name and config profile name instead of IDs
+- [ ] Use context while making requests
+- [ ] Proper and meaningful error handling
+- [ ] Move common parts into thevpnbeast/golang-commons library
+- [ ] CI/CD

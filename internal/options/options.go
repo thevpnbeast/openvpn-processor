@@ -1,22 +1,50 @@
 package options
 
-var opts *VpnbeastServiceOptions
+import (
+	commons "github.com/thevpnbeast/golang-commons"
+	"go.uber.org/zap"
+)
 
-// VpnbeastServiceOptions represents openvpn-processor environment variables
-type VpnbeastServiceOptions struct {
-	DbUrl                string `env:"DB_URL"`
-	DbDriver             string `env:"DB_DRIVER"`
-	DbMaxOpenConn        int    `env:"DB_MAX_OPEN_CONN"`
-	DbMaxIdleConn        int    `env:"DB_MAX_IDLE_CONN"`
-	DbConnMaxLifetimeMin int    `env:"DB_CONN_MAX_LIFETIME_MIN"`
+const (
+	ApplicationName = "openvpn-processor"
+	TargetConfigFileName = "application"
+	TargetConfigFileType = "yaml"
+)
+
+var (
+	opts *OpenvpnProcessorOptions
+	logger *zap.Logger
+)
+
+func init() {
+	applicationId := getStringEnv("CONFIG_APPLICATION_ID", "jl9vegs")
+	confProfileId := getStringEnv("CONFIG_PROFILE_ID", "hek207s")
+
+	logger = commons.GetLogger()
+	opts = newOpenvpnProcessorOptions()
+
+	if err := fetchConfig(applicationId, confProfileId); err != nil {
+		logger.Fatal("fatal error occured while fetching config from AWS AppConfig", zap.String("error", err.Error()))
+	}
+
+	logger.Info("", zap.Any("opts", opts))
 }
 
-// GetVpnbeastServiceOptions returns the initialized VpnbeastServiceOptions
-func GetVpnbeastServiceOptions() *VpnbeastServiceOptions {
+// OpenvpnProcessorOptions represents openvpn-processor environment variables
+type OpenvpnProcessorOptions struct {
+	DbUrl                string
+	DbDriver             string
+	DbMaxOpenConn        int
+	DbMaxIdleConn        int
+	DbConnMaxLifetimeMin int
+}
+
+// GetOpenvpnProcessorOptions returns the initialized VpnbeastServiceOptions
+func GetOpenvpnProcessorOptions() *OpenvpnProcessorOptions {
 	return opts
 }
 
 // newAuthServiceOptions creates an AuthServiceOptions struct with zero values
-func newVpnbeastServiceOptions() *VpnbeastServiceOptions {
-	return &VpnbeastServiceOptions{}
+func newOpenvpnProcessorOptions() *OpenvpnProcessorOptions {
+	return &OpenvpnProcessorOptions{}
 }

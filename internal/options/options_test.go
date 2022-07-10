@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestGetVpnbeastServiceOptions(t *testing.T) {
-	opts := GetVpnbeastServiceOptions()
+func TestGetOpenvpnProcessorOptions(t *testing.T) {
+	opts := GetOpenvpnProcessorOptions()
 	assert.NotNil(t, opts)
 }
