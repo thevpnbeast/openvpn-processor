@@ -3,3 +3,4 @@
 - [ ] Proper and meaningful error handling
 - [ ] Move common parts into thevpnbeast/golang-commons library
 - [ ] CI/CD
+- [ ] Do not insert more than 100 servers

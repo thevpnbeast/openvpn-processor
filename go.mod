@@ -5,6 +5,9 @@ go 1.17
 require (
 	github.com/aws/aws-lambda-go v1.32.1
 	github.com/aws/aws-sdk-go v1.44.51
+	github.com/go-sql-driver/mysql v1.6.0
+	github.com/google/uuid v1.3.0
+	github.com/spf13/cast v1.5.0
 	github.com/spf13/viper v1.12.0
 	github.com/stretchr/testify v1.8.0
 	github.com/thevpnbeast/golang-commons v0.0.0-20220630162307-546b15bf9741
@@ -22,7 +25,6 @@ require (
 	github.com/pelletier/go-toml/v2 v2.0.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/spf13/afero v1.8.2 // indirect
-	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.4.0 // indirect

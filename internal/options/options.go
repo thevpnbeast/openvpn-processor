@@ -6,13 +6,13 @@ import (
 )
 
 const (
-	ApplicationName = "openvpn-processor"
+	ApplicationName      = "openvpn-processor"
 	TargetConfigFileName = "application"
 	TargetConfigFileType = "yaml"
 )
 
 var (
-	opts *OpenvpnProcessorOptions
+	opts   *OpenvpnProcessorOptions
 	logger *zap.Logger
 )
 
@@ -26,17 +26,17 @@ func init() {
 	if err := fetchConfig(applicationId, confProfileId); err != nil {
 		logger.Fatal("fatal error occured while fetching config from AWS AppConfig", zap.String("error", err.Error()))
 	}
-
-	logger.Info("", zap.Any("opts", opts))
 }
 
 // OpenvpnProcessorOptions represents openvpn-processor environment variables
 type OpenvpnProcessorOptions struct {
-	DbUrl                string
-	DbDriver             string
-	DbMaxOpenConn        int
-	DbMaxIdleConn        int
-	DbConnMaxLifetimeMin int
+	VpnGateUrl            string
+	DbUrl                 string
+	DbDriver              string
+	DbMaxOpenConn         int
+	DbMaxIdleConn         int
+	DbConnMaxLifetimeMin  int
+	DialTcpTimeoutSeconds int
 }
 
 // GetOpenvpnProcessorOptions returns the initialized VpnbeastServiceOptions

@@ -54,19 +54,19 @@ func fetchConfig(applicationId, configProfileId string) error {
 	}
 
 	confProfile, _ := svc.GetConfigurationProfile(&appconfig.GetConfigurationProfileInput{
-		ApplicationId: application.Id,
+		ApplicationId:          application.Id,
 		ConfigurationProfileId: aws.String(configProfileId),
 	})
 
 	versions, _ := svc.ListHostedConfigurationVersions(&appconfig.ListHostedConfigurationVersionsInput{
 		ConfigurationProfileId: confProfile.Id,
-		ApplicationId: application.Id,
+		ApplicationId:          application.Id,
 	})
 
 	configuration, _ := svc.GetHostedConfigurationVersion(&appconfig.GetHostedConfigurationVersionInput{
-		ApplicationId: application.Id,
+		ApplicationId:          application.Id,
 		ConfigurationProfileId: confProfile.Id,
-		VersionNumber: versions.Items[0].VersionNumber,
+		VersionNumber:          versions.Items[0].VersionNumber,
 	})
 
 	viper.SetConfigName(TargetConfigFileName)
