@@ -9,7 +9,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/spf13/cast v1.5.0
 	github.com/spf13/viper v1.12.0
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.2
 	github.com/thevpnbeast/golang-commons v0.0.0-20220630162307-546b15bf9741
 	go.uber.org/zap v1.21.0
 )
