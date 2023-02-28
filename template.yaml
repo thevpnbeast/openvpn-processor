@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  openvpn-processor
+  SAM Template for openvpn-processor
+Parameters:
+  ApiName:
+    Type: String
+    Default: openvpn-processor
+  ApiDescription:
+    Type: String
+    Default: API Gateway for openvpn-processor function created by SAM with CloudFormations
+  StageName:
+    Type: String
+    Default: stage
+  AppVersion:
+    Type: String
+    Default: 1.0.0
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+#Globals:
+#  Function:
+#    Timeout: 10
+#    Environment:
+#      Variables:
+#        TABLE_NAME: data-table
+
+Resources:
+  ServiceFunction:
+    # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-function.html
+    Type: AWS::Serverless::Function
+    Properties:
+      Timeout: 10
+      MemorySize: 256
+      Architectures:
+        - x86_64
+      Runtime: go1.x
+      Handler: main
+      CodeUri: ./src
+      Policies:
+        - AWSLambdaExecute
+      Tags:
+        AppVersion: !Ref AppVersion
+      Events:
+        ProcessServers:
+          Type: Schedule
+          Properties:
+            Schedule: rate(5 minutes)
+
+
+Outputs:
+  ServiceFunctionArn:
+    Description: "openvpn-processor Lambda Function ARN"
+    Value: !GetAtt ServiceFunction.Arn
+  ServiceFunctionIamRole:
+    Description: "Implicit IAM Role created for openvpn-processor function"
+    Value: !GetAtt ServiceFunction.Arn

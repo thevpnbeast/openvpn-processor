@@ -2,7 +2,7 @@ package processor
 
 import (
 	"database/sql"
-	"go.uber.org/zap"
+	"log"
 	"time"
 )
 
@@ -14,8 +14,8 @@ func removeServers(db *sql.DB, ip string, proto string, confData string, port in
 	}
 
 	if _, err = stmt.Exec(ip, confData, proto, port); err != nil {
-		logger.Fatal("fatal error occurred while executing query on database", zap.String("ip", ip),
-			zap.String("proto", proto), zap.Int("port", port), zap.String("error", err.Error()))
+		log.Printf("ERROR: an error occured while executing query on database (error=%s dbIP=%s dbProto=%s "+
+			"dbPort=%d", err.Error(), ip, proto, port)
 	}
 }
 
@@ -30,7 +30,7 @@ func insertServers(db *sql.DB, vpnServers []vpnServer) {
 		err                 error
 	)
 
-	logger.Info("starting insert reachable server operation on database", zap.Int("serverCount", len(vpnServers)))
+	log.Printf("INFO: starting insert reachable server operation on database (serverCount=%d)", len(vpnServers))
 	for index, server := range vpnServers {
 		if !isServerInsertable(server.ip, server.proto, server.confData, server.port, opts.DialTcpTimeoutSeconds) {
 			skippedServerCount++
@@ -43,14 +43,13 @@ func insertServers(db *sql.DB, vpnServers []vpnServer) {
 			server.createdAt)
 
 		if stmt, err = db.Prepare(sqlReplaceServer); err != nil {
-			logger.Fatal("fatal error occured while preparing statement", zap.String("query", sqlReplaceServer))
+			log.Printf("ERROR: an error occurred while preparing statement (query=%s)", sqlReplaceServer)
 			return
 		}
 
 		var res sql.Result
 		if res, err = stmt.Exec(values...); err != nil {
-			logger.Error("an error occurred while executing query on database", zap.String("server", server.hostname),
-				zap.String("query", sqlReplaceServer), zap.String("error", err.Error()))
+			log.Printf("ERROR: an error occurred while executing query on database (server=%s error=%s)", server.hostname, err.Error())
 			failedServerCount++
 			continue
 		}
@@ -63,13 +62,13 @@ func insertServers(db *sql.DB, vpnServers []vpnServer) {
 		values = nil
 	}
 
-	logger.Info("Ending insert reachable server operation on database", zap.Int("insertedServerCount", insertedServerCount),
-		zap.Int("skippedServerCount", skippedServerCount), zap.Int("failedServerCount", failedServerCount),
-		zap.Duration("executionTime", time.Since(beforeExecution)))
+	log.Printf("INFO: ending insert reachable server operation on database (insertedServerCount=%d "+
+		"skippedServerCount=%d failedServerCount=%d executionTime=%s)", insertedServerCount, skippedServerCount,
+		failedServerCount, time.Since(beforeExecution).String())
 }
 
 func checkUnreachableServersOnDB(db *sql.DB) {
-	logger.Info("starting remove unreachable server operation on database")
+	log.Printf("INFO: starting remove unreachable server operation on database")
 	var (
 		removedServerCount  = 0
 		port                int
@@ -79,8 +78,8 @@ func checkUnreachableServersOnDB(db *sql.DB) {
 
 	var rows *sql.Rows
 	if rows, err = db.Query(sqlSelectServers); err != nil {
-		logger.Fatal("fatal error occurred while querying database", zap.String("query", sqlSelectServers),
-			zap.String("error", err.Error()))
+		log.Printf("ERROR: an error occurred while querying database (query=%s error=%s)", sqlSelectServers, err.Error())
+		return
 	}
 
 	defer func() {
@@ -92,8 +91,9 @@ func checkUnreachableServersOnDB(db *sql.DB) {
 
 	for rows.Next() {
 		if err := rows.Scan(&ip, &proto, &confData, &port); err != nil {
-			logger.Fatal("fatal error occurred while scanning database", zap.String("ip", ip),
-				zap.String("proto", proto), zap.Int("port", port), zap.String("error", err.Error()))
+			log.Printf("ERROR: an error occurred while scanning database (ip=%s proto=%s port=%d error=%s)",
+				ip, proto, port, err.Error())
+			continue
 		}
 
 		if !isServerInsertable(ip, proto, confData, port, opts.DialTcpTimeoutSeconds) {
@@ -102,6 +102,6 @@ func checkUnreachableServersOnDB(db *sql.DB) {
 		}
 	}
 
-	logger.Info("Ending remove unreachable server operation on database", zap.Int("serverCount", removedServerCount),
-		zap.Duration("executionTime", time.Since(beforeExecution)))
+	log.Printf("INFO: ending remove unreachable server operation on database (removedServerCount=%d executionTime=%s)",
+		removedServerCount, time.Since(beforeExecution).String())
 }

@@ -1,5 +1,4 @@
 .idea/
-bin/
 vendor/
 build/ci/.aws-sam
 
@@ -15,3 +14,11 @@ build/ci/.aws-sam
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+.aws-sam
+
+.bin
+bin/
+src/main.zip
+src/main
+template_generated.yaml
+venv

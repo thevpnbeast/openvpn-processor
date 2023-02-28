@@ -1,9 +1,0 @@
-Resources:
-  Function:
-    Type: AWS::Serverless::Function
-    Properties:
-      Timeout: 300
-      MemorySize: 1024
-      Handler: handler
-      CodeUri: ../../cmd/openvpn-processor
-      Runtime: go1.x

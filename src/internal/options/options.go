@@ -1,8 +1,7 @@
 package options
 
 import (
-	commons "github.com/thevpnbeast/golang-commons"
-	"go.uber.org/zap"
+	"log"
 )
 
 const (
@@ -11,20 +10,17 @@ const (
 	TargetConfigFileType = "yaml"
 )
 
-var (
-	opts   *OpenvpnProcessorOptions
-	logger *zap.Logger
-)
+var opts *OpenvpnProcessorOptions
 
 func init() {
 	applicationId := getStringEnv("CONFIG_APPLICATION_ID", "jl9vegs")
 	confProfileId := getStringEnv("CONFIG_PROFILE_ID", "hek207s")
 
-	logger = commons.GetLogger()
 	opts = newOpenvpnProcessorOptions()
 
 	if err := fetchConfig(applicationId, confProfileId); err != nil {
-		logger.Fatal("fatal error occured while fetching config from AWS AppConfig", zap.String("error", err.Error()))
+		log.Printf("FATAL: fatal error occurred while fetching config from AWS AppConfig (error=%s)", err.Error())
+		panic(err)
 	}
 }
 

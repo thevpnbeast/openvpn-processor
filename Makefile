@@ -1,57 +1,63 @@
 # assumes that we have already a profile named thevpnbeast-root in AWS CLI config
-export AWS_PROFILE := thevpnbeast-root
-GOOS := linux
-GOARCH := amd64
-CGO_ENABLED := 0
-export GO111MODULE := on
+#export AWS_PROFILE := thevpnbeast-root
+#
+AWS_REGION = us-east-1
+AWS_IAM_CAPABILITIES = CAPABILITY_IAM
+AWS_RELEASES_BUCKET = thevpnbeast-releases-1
+AWS_STACK_NAME = openvpn-processor
+TEMPLATE_FILE = template.yaml
+GENERATED_TEMPLATE_FILE = template_generated.yaml
 
-lint:
-	golangci-lint run
+ERRCHECK_VERSION = latest
+GOLANGCI_LINT_VERSION = latest
+REVIVE_VERSION = latest
+GOIMPORTS_VERSION = latest
+INEFFASSIGN_VERSION = latest
 
-fmt:
-	go fmt ./...
+LOCAL_BIN := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))/.bin
+VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "1.0.0")
 
-vet:
-	go vet ./...
+.PHONY: all
+all: clean tools lint fmt test build
 
-ineffassign:
-	go get github.com/gordonklaus/ineffassign
-	go mod vendor
-	ineffassign ./...
+.PHONY: clean
+clean:
+	rm -rf $(LOCAL_BIN)
 
-test:
-	go test ./...
+.PHONY: tools
+tools:  golangci-lint-install revive-install go-imports-install ineffassign-install
+	go mod tidy
 
-test_coverage:
-	go test ./... -race -coverprofile=coverage.txt -covermode=atomic
+.PHONY: golangci-lint-install
+golangci-lint-install:
+	GOBIN=$(LOCAL_BIN) go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 
-build:
-	go build -o bin/main cmd/openvpn-processor/main.go
+.PHONY: revive-install
+revive-install:
+	GOBIN=$(LOCAL_BIN) go install github.com/mgechev/revive@$(REVIVE_VERSION)
 
-run:
-	go run cmd/openvpn-processor/main.go
+.PHONY: ineffassign-install
+ineffassign-install:
+	GOBIN=$(LOCAL_BIN) go install github.com/gordonklaus/ineffassign@$(INEFFASSIGN_VERSION)
 
-cross-compile:
-	# 32-Bit Systems
-	# FreeBDS
-	GOOS=freebsd GOARCH=386 go build -o bin/main-freebsd-386 cmd/openvpn-processor/main.go
-	# MacOS
-	GOOS=darwin GOARCH=386 go build -o bin/main-darwin-386 cmd/openvpn-processor/main.go
-	# Linux
-	GOOS=linux GOARCH=386 go build -o bin/main-linux-386 cmd/openvpn-processor/main.go
-	# Windows
-	GOOS=windows GOARCH=386 go build -o bin/main-windows-386 cmd/openvpn-processor/main.go
-        # 64-Bit
-	# FreeBDS
-	GOOS=freebsd GOARCH=amd64 go build -o bin/main-freebsd-amd64 cmd/openvpn-processor/main.go
-	# MacOS
-	GOOS=darwin GOARCH=amd64 go build -o bin/main-darwin-amd64 cmd/openvpn-processor/main.go
-	# Linux
-	GOOS=linux GOARCH=amd64 go build -o bin/main-linux-amd64 cmd/openvpn-processor/main.go
-	# Windows
-	GOOS=windows GOARCH=amd64 go build -o bin/main-windows-amd64 cmd/openvpn-processor/main.go
+.PHONY: lint
+lint: tools run-lint
 
-upgrade-direct-deps:
+.PHONY: run-lint
+run-lint: lint-golangci-lint lint-revive
+
+.PHONY: lint-golangci-lint
+lint-golangci-lint:
+	$(info running golangci-lint...)
+	$(LOCAL_BIN)/golangci-lint -v run ./... || (echo golangci-lint returned an error, exiting!; sh -c 'exit 1';)
+
+.PHONY: lint-revive
+lint-revive:
+	$(info running revive...)
+	$(LOCAL_BIN)/revive -formatter=stylish -config=build/ci/.revive.toml -exclude ./vendor/... ./... || (echo revive returned an error, exiting!; sh -c 'exit 1';)
+
+.PHONY: upgrade-direct-deps
+upgrade-direct-deps: tidy
 	for item in `grep -v 'indirect' go.mod | grep '/' | cut -d ' ' -f 1`; do \
 		echo "trying to upgrade direct dependency $$item" ; \
 		go get -u $$item ; \
@@ -59,15 +65,125 @@ upgrade-direct-deps:
 	go mod tidy
 	go mod vendor
 
-aws_build:
+.PHONY: tidy
+tidy:
+	go mod tidy
+	go mod vendor
+
+.PHONY: run-goimports
+run-goimports: go-imports-install
+	for item in `find . -type f -name '*.go' -not -path './vendor/*'`; do \
+		$(LOCAL_BIN)/goimports -l -w $$item ; \
+	done
+
+.PHONY: go-imports-install
+go-imports-install:
+	GOBIN=$(LOCAL_BIN) go install golang.org/x/tools/cmd/goimports@$(GOIMPORTS_VERSION)
+
+.PHONY: fmt
+fmt: tools run-fmt run-ineffassign run-vet
+
+.PHONY: run-fmt
+run-fmt:
+	$(info running fmt...)
+	go fmt ./... || (echo fmt returned an error, exiting!; sh -c 'exit 1';)
+
+.PHONY: run-ineffassign
+run-ineffassign:
+	$(info running ineffassign...)
+	$(LOCAL_BIN)/ineffassign ./... || (echo ineffassign returned an error, exiting!; sh -c 'exit 1';)
+
+.PHONY: run-vet
+run-vet:
+	$(info running vet...)
+	go vet ./... || (echo vet returned an error, exiting!; sh -c 'exit 1';)
+
+.PHONY: test
+test: tidy
+	$(info starting the test for whole module...)
+	go test -failfast -vet=off -race ./... || (echo an error while testing, exiting!; sh -c 'exit 1';)
+
+.PHONY: test-with-coverage
+test-with-coverage: tidy
+	go test ./... -race -coverprofile=coverage.txt -covermode=atomic
+
+.PHONY: update
+update: tidy
+	go get -u ./...
+
+.PHONY: build
+build: tidy
+	$(info building binary...)
+	GOOS=linux GOARCH=amd64 go build -o src/main src/main.go || (echo an error while building binary, exiting!; sh -c 'exit 1';)
+
+.PHONY: run
+run: tidy
+	go run src/main.go
+
+.PHONY: cross-compile
+cross-compile:
+	GOOS=freebsd GOARCH=386 go build -o bin/main-freebsd-386 src/main.go
+	GOOS=darwin GOARCH=386 go build -o bin/main-darwin-386 src/main.go
+	GOOS=linux GOARCH=386 go build -o bin/main-linux-386 src/main.go
+	GOOS=windows GOARCH=386 go build -o bin/main-windows-386 src/main.go
+	GOOS=freebsd GOARCH=amd64 go build -o bin/main-freebsd-amd64 src/main.go
+	GOOS=darwin GOARCH=amd64 go build -o bin/main-darwin-amd64 src/main.go
+	GOOS=linux GOARCH=amd64 go build -o bin/main-linux-amd64 src/main.go
+	GOOS=windows GOARCH=amd64 go build -o bin/main-windows-amd64 src/main.go
+
+.PHONY: aws-build
+aws-build:
 	go get -v all
-	GOOS=linux go build -o bin/main cmd/openvpn-processor/main.go
-	zip -jrm bin/main.zip bin/main
+	GOOS=linux GOARCH=amd64 go build -o src/main src/main.go
+	zip -jrm src/main-$(VERSION).zip src/main
 
-aws_upload: aws_build
-	aws lambda update-function-code --function-name openvpn-processor --zip-file fileb://bin/main.zip
 
-aws_upload_publish: aws_build
-	aws lambda update-function-code --function-name openvpn-processor --zip-file fileb://bin/main.zip --publish
+.PHONY: aws-deploy
+aws-deploy: aws-build
+	aws lambda update-function-code --function-name openvpn-processor --zip-file fileb://src/main.zip
 
-all: test build run
+.PHONY: aws-publish
+aws-publish: aws-build
+	aws lambda update-function-code --function-name openvpn-processor --zip-file fileb://src/main.zip --publish
+
+.PHONY: sam-validate
+sam-validate:
+	sam validate
+
+.PHONY: sam-local-start-api
+sam-local-start-api:
+	sam local start-api
+
+.PHONY: sam-local-invoke
+sam-local-invoke:
+	sam local invoke
+
+.PHONY: sam-cloud-invoke
+sam-cloud-invoke:
+	sam sync --stack-name $(AWS_STACK_NAME) --watch
+
+.PHONY: sam-build
+sam-build: build
+	which build-lambda-zip || go install github.com/aws/aws-lambda-go/cmd/build-lambda-zip@latest
+	build-lambda-zip -o src/main.zip src/main || (echo an error while compressing binary with build-lambda-zip, exiting!; sh -c 'exit 1';)
+	sam build
+
+.PHONY: sam-package
+sam-package: sam-build
+	sam package --s3-bucket $(AWS_RELEASES_BUCKET) --template-file $(TEMPLATE_FILE) --output-template-file $(GENERATED_TEMPLATE_FILE)
+
+.PHONY: sam-deploy-stage
+sam-deploy-stage: sam-package
+	sam deploy --parameter-overrides StageName=stage AppVersion=$(VERSION) --no-confirm-changeset \
+		--no-fail-on-empty-changeset --template-file $(GENERATED_TEMPLATE_FILE) --stack-name $(AWS_STACK_NAME) \
+		--s3-bucket $(AWS_RELEASES_BUCKET) --capabilities $(AWS_IAM_CAPABILITIES) --region $(AWS_REGION)
+
+.PHONY: sam-deploy-prod
+sam-deploy-prod: sam-package
+	sam deploy --parameter-overrides StageName=prod AppVersion=$(VERSION) --no-confirm-changeset \
+		--no-fail-on-empty-changeset --template-file $(GENERATED_TEMPLATE_FILE) --stack-name $(AWS_STACK_NAME) \
+		--s3-bucket $(AWS_RELEASES_BUCKET) --capabilities $(AWS_IAM_CAPABILITIES) --region $(AWS_REGION)
+
+.PHONY: sam-publish
+sam-publish: sam-deploy
+	sam publish --region $(AWS_REGION) --semantic-version $(VERSION)

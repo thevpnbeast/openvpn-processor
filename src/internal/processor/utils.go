@@ -8,9 +8,9 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
 	"github.com/spf13/cast"
-	"go.uber.org/zap"
 	"io"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"strings"
@@ -21,7 +21,8 @@ import (
 func initDb() *sql.DB {
 	db, err = sql.Open(opts.DbDriver, opts.DbUrl)
 	if err != nil {
-		logger.Fatal("fatal error occurred while opening database connection", zap.String("error", err.Error()))
+		log.Printf("FATAL: fatal error occurred while opening database connection (error=%s)", err.Error())
+		panic(err)
 	}
 	tuneDbPooling(db)
 	return db
@@ -63,7 +64,7 @@ func createStructsFromCsv(csvContent [][]string) []vpnServer {
 
 		decodedByteSlice, err := base64.StdEncoding.DecodeString(entry[14])
 		if err != nil {
-			logger.Warn("an error occurred while decoding conf data, skipping", zap.String("data", entry[0]))
+			log.Printf("WARN: an error occurred while decoding conf data, skipping...")
 			continue
 		}
 
@@ -83,17 +84,16 @@ func createStructsFromCsv(csvContent [][]string) []vpnServer {
 		vpnServers = append(vpnServers, server)
 	}
 
-	logger.Info("successfully created structs from csv", zap.Int("structsCreated", len(vpnServers)))
+	log.Printf("INFO: successfully created structs from csv (structsCreated=%d)", len(vpnServers))
 	return vpnServers
 }
 
 func getCsvContent(vpnGateUrl string) [][]string {
-	logger.Info("getting server list from API", zap.String("url", vpnGateUrl))
+	log.Printf("INFO: getting server list from API (url=%s)", vpnGateUrl)
 	var csvContent [][]string
 	resp, err := http.Get(vpnGateUrl)
 	if err != nil {
-		logger.Error("an error occurred while making GET request", zap.String("url", vpnGateUrl),
-			zap.String("error", err.Error()))
+		log.Printf("ERROR: an error occurred while making GET request (url=%s)", vpnGateUrl)
 		return nil
 	}
 
@@ -107,8 +107,7 @@ func getCsvContent(vpnGateUrl string) [][]string {
 	encodedBody, err := ioutil.ReadAll(resp.Body)
 	decodedBody := string(encodedBody)
 	if err != nil {
-		logger.Error("an error occurred while reading response body", zap.String("vpnGateUrl", vpnGateUrl),
-			zap.String("error", err.Error()))
+		log.Printf("ERROR: an error occurred while reading response body (vpnGateUrl=%s error=%s)", vpnGateUrl, err.Error())
 		return nil
 	}
 	reader := csv.NewReader(strings.NewReader(decodedBody))
