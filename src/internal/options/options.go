@@ -1,10 +1,10 @@
 package options
 
-const (
-	ApplicationName      = "openvpn-processor"
-	TargetConfigFileName = "application"
-	TargetConfigFileType = "yaml"
-)
+//const (
+//	ApplicationName      = "openvpn-processor"
+//	TargetConfigFileName = "application"
+//	TargetConfigFileType = "yaml"
+//)
 
 var opts *OpenvpnProcessorOptions
 

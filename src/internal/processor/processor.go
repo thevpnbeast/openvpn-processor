@@ -1,22 +1,20 @@
 package processor
 
 import (
-	"database/sql"
-	"github.com/thevpnbeast/openvpn-processor/src/internal/options"
 	"log"
 	"os"
 )
 
-var (
-	opts *options.OpenvpnProcessorOptions
-	db   *sql.DB
-	err  error
-)
+//var (
+//	opts *options.OpenvpnProcessorOptions
+//	db   *sql.DB
+//	err  error
+//)
 
-func init() {
-	opts = options.GetOpenvpnProcessorOptions()
-	//db = initDb()
-}
+//func init() {
+//	opts = options.GetOpenvpnProcessorOptions()
+//	//db = initDb()
+//}
 
 func ProcessEventHandler() {
 	log.Println("INFO: starting scheduler execution")
