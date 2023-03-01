@@ -6,7 +6,9 @@ AWS_REGION = us-east-1
 AWS_IAM_CAPABILITIES = CAPABILITY_IAM
 AWS_RELEASES_BUCKET = thevpnbeast-releases-1
 AWS_STACK_NAME = openvpn-processor
+
 TEMPLATE_FILE = template.yaml
+TEMPLATE_ENV_PASSED_FILE = template_env_passed.yaml
 GENERATED_TEMPLATE_FILE = template_generated.yaml
 
 ERRCHECK_VERSION = latest
@@ -167,11 +169,12 @@ sam-cloud-invoke:
 sam-build: build
 	which build-lambda-zip || go install github.com/aws/aws-lambda-go/cmd/build-lambda-zip@latest
 	build-lambda-zip -o src/main.zip src/main || (echo an error while compressing binary with build-lambda-zip, exiting!; sh -c 'exit 1';)
-	sam build
+	envsubst < $(TEMPLATE_FILE) > $(TEMPLATE_ENV_PASSED_FILE)
+	sam build --template-file $(TEMPLATE_ENV_PASSED_FILE)
 
 .PHONY: sam-package
 sam-package: sam-build
-	sam package --s3-prefix $(APP_NAME) --s3-bucket $(AWS_RELEASES_BUCKET) --template-file $(TEMPLATE_FILE) --output-template-file $(GENERATED_TEMPLATE_FILE)
+	sam package --s3-prefix $(APP_NAME) --s3-bucket $(AWS_RELEASES_BUCKET) --template-file $(TEMPLATE_ENV_PASSED_FILE) --output-template-file $(GENERATED_TEMPLATE_FILE)
 
 .PHONY: sam-deploy
 sam-deploy: sam-package
