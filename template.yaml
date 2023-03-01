@@ -4,26 +4,16 @@ Description: >
   openvpn-processor
   SAM Template for openvpn-processor
 Parameters:
-  ApiName:
-    Type: String
-    Default: openvpn-processor
-  ApiDescription:
-    Type: String
-    Default: API Gateway for openvpn-processor function created by SAM with CloudFormations
-  StageName:
-    Type: String
-    Default: stage
   AppVersion:
     Type: String
     Default: 1.0.0
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
-#Globals:
-#  Function:
-#    Timeout: 10
-#    Environment:
-#      Variables:
-#        TABLE_NAME: data-table
+Globals:
+  Function:
+    Environment:
+      Variables:
+        FOO: bar
 
 Resources:
   ServiceFunction:
@@ -31,6 +21,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Timeout: 10
+#      Environment:
+#        Variables:
+#          SPECIAL_FUNCTION: Overriding global value to avoid circular dependency
       MemorySize: 256
       Architectures:
         - x86_64
@@ -46,7 +39,6 @@ Resources:
           Type: Schedule
           Properties:
             Schedule: rate(5 minutes)
-
 
 Outputs:
   ServiceFunctionArn:

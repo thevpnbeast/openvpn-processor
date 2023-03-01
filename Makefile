@@ -1,6 +1,7 @@
 # assumes that we have already a profile named thevpnbeast-root in AWS CLI config
 #export AWS_PROFILE := thevpnbeast-root
 #
+APP_NAME = openvpn-processor
 AWS_REGION = us-east-1
 AWS_IAM_CAPABILITIES = CAPABILITY_IAM
 AWS_RELEASES_BUCKET = thevpnbeast-releases-1
@@ -170,19 +171,14 @@ sam-build: build
 
 .PHONY: sam-package
 sam-package: sam-build
-	sam package --s3-bucket $(AWS_RELEASES_BUCKET) --template-file $(TEMPLATE_FILE) --output-template-file $(GENERATED_TEMPLATE_FILE)
+	sam package --s3-prefix $(APP_NAME) --s3-bucket $(AWS_RELEASES_BUCKET) --template-file $(TEMPLATE_FILE) --output-template-file $(GENERATED_TEMPLATE_FILE)
 
-.PHONY: sam-deploy-stage
-sam-deploy-stage: sam-package
-	sam deploy --parameter-overrides StageName=stage AppVersion=$(VERSION) --no-confirm-changeset \
-		--no-fail-on-empty-changeset --template-file $(GENERATED_TEMPLATE_FILE) --stack-name $(AWS_STACK_NAME) \
-		--s3-bucket $(AWS_RELEASES_BUCKET) --capabilities $(AWS_IAM_CAPABILITIES) --region $(AWS_REGION)
-
-.PHONY: sam-deploy-prod
-sam-deploy-prod: sam-package
+.PHONY: sam-deploy
+sam-deploy: sam-package
 	sam deploy --parameter-overrides StageName=prod AppVersion=$(VERSION) --no-confirm-changeset \
 		--no-fail-on-empty-changeset --template-file $(GENERATED_TEMPLATE_FILE) --stack-name $(AWS_STACK_NAME) \
-		--s3-bucket $(AWS_RELEASES_BUCKET) --capabilities $(AWS_IAM_CAPABILITIES) --region $(AWS_REGION)
+		--s3-prefix $(APP_NAME) --s3-bucket $(AWS_RELEASES_BUCKET) --capabilities $(AWS_IAM_CAPABILITIES) \
+		--region $(AWS_REGION)
 
 .PHONY: sam-publish
 sam-publish: sam-deploy

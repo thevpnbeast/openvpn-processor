@@ -32,10 +32,8 @@ $ make sam-validate
 $ make sam-local-invoke
 # Test function in the cloud
 $ make sam-cloud-invoke
-# Deploy to stage
-$ make sam-deploy-stage
-# Deploy to prod
-$ make sam-deploy-prod
+# Deploy
+$ make sam-deploy
 ```
 
 ## Debugging Locally

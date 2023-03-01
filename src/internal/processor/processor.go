@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"github.com/thevpnbeast/openvpn-processor/src/internal/options"
 	"log"
+	"os"
 )
 
 var (
@@ -19,6 +20,8 @@ func init() {
 
 func ProcessEventHandler() {
 	log.Println("INFO: starting scheduler execution")
+	log.Printf("INFO: value of FOO variable is %s", os.Getenv("FOO"))
+	log.Printf("INFO: value of FOO variable is %s", os.Getenv("FOO"))
 	//beforeMainExecution := time.Now()
 	//csvContent := getCsvContent(opts.VpnGateUrl)
 	//vpnServers := createStructsFromCsv(csvContent)
