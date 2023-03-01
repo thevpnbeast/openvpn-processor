@@ -197,7 +197,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
       - name: Pass Github secrets into current environment
-        run: envsubst < hello.txt > hello_generated.txt
+        run: envsubst < template.yaml > template.yaml
         env:
           DB_URL: ${{ secrets.DB_URL }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
