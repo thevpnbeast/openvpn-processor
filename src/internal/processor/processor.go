@@ -18,8 +18,9 @@ import (
 
 func ProcessEventHandler() {
 	log.Println("INFO: starting scheduler execution")
-	log.Printf("INFO: value of FOO variable is %s", os.Getenv("FOO"))
-	log.Printf("INFO: value of FOO variable is %s", os.Getenv("FOO"))
+	log.Printf("INFO: value of DB_URL variable is %s", os.Getenv("DB_URL"))
+	log.Printf("INFO: value of DB_USERNAME variable is %s", os.Getenv("DB_USERNAME"))
+	log.Printf("INFO: value of DB_PASSWORD variable is %s", os.Getenv("DB_PASSWORD"))
 	//beforeMainExecution := time.Now()
 	//csvContent := getCsvContent(opts.VpnGateUrl)
 	//vpnServers := createStructsFromCsv(csvContent)

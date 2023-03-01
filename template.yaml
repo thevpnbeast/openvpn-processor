@@ -13,7 +13,9 @@ Globals:
   Function:
     Environment:
       Variables:
-        FOO: bar
+        DB_URL: $DB_URL
+        DB_USERNAME: $DB_USERNAME
+        DB_PASSWORD: $DB_PASSWORD
 
 Resources:
   ServiceFunction:
