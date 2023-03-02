@@ -21,4 +21,5 @@ bin/
 src/main.zip
 src/main
 template_generated.yaml
+template_env_passed.yaml
 venv
