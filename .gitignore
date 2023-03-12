@@ -18,8 +18,8 @@ build/ci/.aws-sam
 
 .bin
 bin/
-src/main.zip
-src/main
-template_generated.yaml
-template_env_passed.yaml
+**/main.zip
+**/main
+**/template_env_passed.yaml
+**/template_generated.yaml
 venv
