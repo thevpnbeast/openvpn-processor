@@ -7,9 +7,8 @@ AWS_IAM_CAPABILITIES = CAPABILITY_IAM
 AWS_RELEASES_BUCKET = thevpnbeast-releases-1
 AWS_STACK_NAME = openvpn-processor
 
-TEMPLATE_FILE = template.yaml
-TEMPLATE_ENV_PASSED_FILE = template_env_passed.yaml
-GENERATED_TEMPLATE_FILE = template_generated.yaml
+TEMPLATE_FILE = build/package/template.yaml
+GENERATED_TEMPLATE_FILE = build/package/template_generated.yaml
 
 ERRCHECK_VERSION = latest
 GOLANGCI_LINT_VERSION = latest
@@ -28,8 +27,7 @@ clean:
 	rm -rf $(LOCAL_BIN)
 
 .PHONY: tools
-tools:  golangci-lint-install revive-install go-imports-install ineffassign-install
-	go mod tidy
+tools:  tidy golangci-lint-install revive-install go-imports-install ineffassign-install
 
 .PHONY: golangci-lint-install
 golangci-lint-install:
@@ -117,72 +115,67 @@ update: tidy
 .PHONY: build
 build: tidy
 	$(info building binary...)
-	GOOS=linux GOARCH=amd64 go build -o src/main src/main.go || (echo an error while building binary, exiting!; sh -c 'exit 1';)
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o src/main src/main.go || (echo an error while building binary, exiting!; sh -c 'exit 1';)
 
 .PHONY: run
 run: tidy
-	go run src/main.go
+	go run main.go
 
-.PHONY: cross-compile
-cross-compile:
-	GOOS=freebsd GOARCH=386 go build -o bin/main-freebsd-386 src/main.go
-	GOOS=darwin GOARCH=386 go build -o bin/main-darwin-386 src/main.go
-	GOOS=linux GOARCH=386 go build -o bin/main-linux-386 src/main.go
-	GOOS=windows GOARCH=386 go build -o bin/main-windows-386 src/main.go
-	GOOS=freebsd GOARCH=amd64 go build -o bin/main-freebsd-amd64 src/main.go
-	GOOS=darwin GOARCH=amd64 go build -o bin/main-darwin-amd64 src/main.go
-	GOOS=linux GOARCH=amd64 go build -o bin/main-linux-amd64 src/main.go
-	GOOS=windows GOARCH=amd64 go build -o bin/main-windows-amd64 src/main.go
-
-.PHONY: aws-build
-aws-build:
-	go get -v all
-	GOOS=linux GOARCH=amd64 go build -o src/main src/main.go
-	zip -jrm src/main-$(VERSION).zip src/main
-
-
-.PHONY: aws-deploy
-aws-deploy: aws-build
-	aws lambda update-function-code --function-name openvpn-processor --zip-file fileb://src/main.zip
-
-.PHONY: aws-publish
-aws-publish: aws-build
-	aws lambda update-function-code --function-name openvpn-processor --zip-file fileb://src/main.zip --publish
-
+### SAM CLI commands ###
 .PHONY: sam-validate
 sam-validate:
-	sam validate
-
-.PHONY: sam-local-start-api
-sam-local-start-api:
-	sam local start-api
-
-.PHONY: sam-local-invoke
-sam-local-invoke:
-	sam local invoke
-
-.PHONY: sam-cloud-invoke
-sam-cloud-invoke:
-	sam sync --stack-name $(AWS_STACK_NAME) --watch
+	sam validate --template-file $(TEMPLATE_FILE)
 
 .PHONY: sam-build
-sam-build: build
-	which build-lambda-zip || go install github.com/aws/aws-lambda-go/cmd/build-lambda-zip@latest
-	build-lambda-zip -o src/main.zip src/main || (echo an error while compressing binary with build-lambda-zip, exiting!; sh -c 'exit 1';)
-	envsubst < $(TEMPLATE_FILE) > $(TEMPLATE_ENV_PASSED_FILE)
-	sam build --template-file $(TEMPLATE_ENV_PASSED_FILE)
+sam-build:
+	$(info building binary...)
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o src/main src/main.go || (echo an error while building binary, exiting!; sh -c 'exit 1';)
+#	which build-lambda-zip || go install github.com/aws/aws-lambda-go/cmd/build-lambda-zip@latest
+#	build-lambda-zip -o main.zip main || (echo an error while compressing binary with build-lambda-zip, exiting!; sh -c 'exit 1';)
+	sam build --template-file $(TEMPLATE_FILE) --build-dir src/.aws-sam/build
 
 .PHONY: sam-package
 sam-package: sam-build
-	sam package --s3-prefix $(APP_NAME) --s3-bucket $(AWS_RELEASES_BUCKET) --template-file $(TEMPLATE_ENV_PASSED_FILE) --output-template-file $(GENERATED_TEMPLATE_FILE)
+	sam package --s3-prefix $(APP_NAME) --s3-bucket $(AWS_RELEASES_BUCKET) --template-file $(TEMPLATE_FILE) --output-template-file $(GENERATED_TEMPLATE_FILE)
 
 .PHONY: sam-deploy
 sam-deploy: sam-package
-	sam deploy --parameter-overrides StageName=prod AppVersion=$(VERSION) --no-confirm-changeset \
+	sam deploy --parameter-overrides AppVersion=$(VERSION) --no-confirm-changeset \
 		--no-fail-on-empty-changeset --template-file $(GENERATED_TEMPLATE_FILE) --stack-name $(AWS_STACK_NAME) \
 		--s3-prefix $(APP_NAME) --s3-bucket $(AWS_RELEASES_BUCKET) --capabilities $(AWS_IAM_CAPABILITIES) \
 		--region $(AWS_REGION)
 
 .PHONY: sam-publish
 sam-publish: sam-deploy
-	sam publish --region $(AWS_REGION) --semantic-version $(VERSION)
+	sam publish --region $(AWS_REGION) --semantic-version $(VERSION) -t $(GENERATED_TEMPLATE_FILE)
+
+.PHONY: sam-local-start-api
+sam-local-start-api: sam-build
+	sam local start-api --template-file $(GENERATED_TEMPLATE_FILE)
+
+.PHONY: sam-local-invoke
+sam-local-invoke: sam-build
+	sam local invoke --template-file $(GENERATED_TEMPLATE_FILE)
+
+.PHONY: sam-cloud-invoke
+sam-cloud-invoke: sam-build
+	sam sync --stack-name $(AWS_STACK_NAME) --template-file $(GENERATED_TEMPLATE_FILE) --watch
+
+.PHONY: sam-delete
+sam-delete:
+	sam delete --stack-name $(AWS_STACK_NAME) --template-file $(GENERATED_TEMPLATE_FILE) --region $(AWS_REGION)
+
+### Unneeded commands for now ###
+#.PHONY: aws-build
+#aws-build: tidy
+#	go get -v all
+#	GOOS=linux GOARCH=amd64 go build -o main main.go
+#	zip -jrm main-$(VERSION).zip main
+#
+#.PHONY: aws-deploy
+#aws-deploy: aws-build
+#	aws lambda update-function-code --function-name openvpn-processor --zip-file fileb://main.zip
+#
+#.PHONY: aws-publish
+#aws-publish: aws-build
+#	aws lambda update-function-code --function-name openvpn-processor --zip-file fileb://main.zip --publish

@@ -31,7 +31,7 @@ Resources:
         - x86_64
       Runtime: go1.x
       Handler: main
-      CodeUri: ./src
+      CodeUri: ../../src
       Policies:
         - AWSLambdaExecute
       Tags:
